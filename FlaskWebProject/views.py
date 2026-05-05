@@ -67,11 +67,9 @@ def login():
         user = User.query.filter_by(username=form.username.data).first()
         if user is None or not user.check_password(form.password.data):
             flash('Invalid username or password')
-            print("Not successful: Invalid login attempt")
             app.logger.info('Not successful: Invalid login attempt for username %s', form.username.data)
             return redirect(url_for('login'))
         login_user(user, remember=form.remember_me.data)
-        print(f"Successful: {user.username} logged in")
         app.logger.info('Successful: %s logged in', user.username)
         next_page = request.args.get('next')
         if not next_page or url_parse(next_page).netloc != '':
@@ -84,11 +82,9 @@ def login():
 @app.route(Config.REDIRECT_PATH)  # Its absolute URL must match your app's redirect_uri set in AAD
 def authorized():
     if request.args.get('state') != session.get("state"):
-        print("Not successful: State mismatch during Microsoft auth")
         app.logger.info('Not successful: State mismatch during Microsoft auth')
         return redirect(url_for("home"))  # No-OP. Goes back to Index page
     if "error" in request.args:  # Authentication/Authorization failure
-        print("Not successful: Microsoft auth returned an error")
         app.logger.info('Not successful: Microsoft auth returned an error: %s', request.args)
         return render_template("auth_error.html", result=request.args)
     if request.args.get('code'):
@@ -99,7 +95,6 @@ def authorized():
             redirect_uri=url_for('authorized', _external=True)
         )
         if "error" in result:
-            print("Not successful: Token acquisition failed")
             app.logger.info('Not successful: Token acquisition failed: %s', result)
             return render_template("auth_error.html", result=result)
         session["user"] = result.get("id_token_claims")
@@ -107,12 +102,10 @@ def authorized():
         # Here, we'll use the admin username for anyone who is authenticated by MS
         user = User.query.filter_by(username="admin").first()
         if user is None:
-            print("Not successful: Admin user not found for Microsoft login")
             app.logger.info('Not successful: Admin user not found for Microsoft login')
             flash('Unable to complete Microsoft login')
             return redirect(url_for('login'))
         login_user(user)
-        print("Successful: Microsoft login")
         app.logger.info('Successful: Microsoft login for admin user')
         _save_cache(cache)
     return redirect(url_for('home'))
